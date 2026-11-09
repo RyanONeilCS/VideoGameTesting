@@ -18,11 +18,12 @@
 - **Peeks** around corners ahead of you, and **leans out** from behind corners to watch you. Only part of him shows: a head, a shoulder, his eyes.
 - **Peeks out of lockers,** too: a locker door ahead of you **creaks open**, and his **eyes watch you through the gap**. Spot him and the door eases shut... but now you *know* he's in there. A locker he's hiding in sits **a crack open, one eye glinting**, creaking now and then.
 - When you spot him, he **holds your gaze, then backs away** behind the corner, always facing you, never turning his back. (If there's no cover close by, he just **teleports away on the spot**, even while you're watching.) Then he either:
-  - **teleports away** (a **purple flash** around the corner),
+  - **teleports away** (a **purple flash** around the corner)... or **pretends to**: about 1 flash in 6 is fake, and he's still right there around the corner,
   - **walks off** out of sight (no flash: is he still nearby?),
   - **baits you:** he reappears far down the hallway ahead of you, just standing there,
   - or (rarely) **stays right there** around the corner.
 - Every sighting brings him a little closer over the match. The pressure builds.
+- **Disguises himself as another monster in the match** (now and then, out of sight). Right now: **the Brute**. Same size, same look, same charge... but **completely silent.** No thuds, no roar, no panting. The real Brute is always loud. He stays disguised for up to a minute, then changes back where you can't see.
 
 ### The rule
 > **Keep an eye on him, but don't stare.**
@@ -33,9 +34,10 @@
 2. **You stare at him too long** (about 6 seconds) while he's watching you, baiting you, or caught in the open.
 3. **You walk up to him** when you've caught him in the open.
 4. **You take the bait:** you walk down the hallway toward him and get within about 10 m.
-5. **You follow him:** around a corner while he's waiting there for you, or by keeping up with him while he backs away (for about 3 s, like circling a pillar with him).
+5. **You follow him:** around a corner while he's waiting there for you (including after a **fake teleport**: going to check where he "left" from counts), or by keeping up with him while he backs away (for about 3 s, like circling a pillar with him).
 6. **You open a locker he's in** (that's following him). **Walk right past it** and he bursts out with a screech: usually just a scare (he flashes away), but about 1 in 4 times it's real.
 7. **Rarely, for no reason.** He's "angry" (about once every 10 minutes). *Open question: keep it, or keep the rule 100% consistent?*
+8. **Disguised as another monster** (see below): reach you as the fake Brute and it's usually just a purple flash in your face, but about 1 in 4 times it's real. He also **opens the locker** he saw you get into (the real Brute almost never does).
 
 ### When he attacks
 - He **roars** first (a moment of warning).
@@ -53,28 +55,31 @@
 - When you catch him in the open, **look away.** He'll leave.
 - Don't chase him, don't follow him around corners, don't walk toward him down a hallway.
 - **Watch the lockers.** A door open a crack with an eye in it: walk wide around it, and don't open it.
+- **Listen to the Brute.** If a Brute is coming at you **without a sound**, it's him: **stand your ground and watch it.** He's exposed and flashes away. (Do that to the *real* Brute and you're caught. Trust your ears.) And never hide from the silent one in a locker: he *will* open it.
 - Stick together: he goes after **whoever isn't watching their back.**
 
 ### Tells (how you know he's around)
-- The **purple flash** (usually means he teleported... usually).
+- The **purple flash** (usually means he teleported... usually. About 1 in 6 is fake: he never left).
 - Glowing eyes in a dark corner; a head poking around a corner.
 - A locker door that **creaks**, or sits **open a crack** with an eye in the gap.
+- A monster that's **acting wrong**: a **silent Brute** is him in disguise.
 - *(Planned)* footsteps that stop when you turn around.
 
 ### Tricks (planned, added one at a time)
-- **Fake teleport:** a flash, but he's still there. Go check where he "left" from and he gets you. Rare enough that you usually trust the flash.
+- ✅ **Fake teleport (built):** a flash, but he never left. He's waiting right there around the corner. Go check where he "left" from and he gets you. About 1 flash in 6, so you usually trust the flash.
 - **Fake hunt ending:** the hunt "ends" with a flash... and he's right behind you.
 - **Look away, hear running, look back:** he's right in your face, then he flashes away.
-- **Disguise (later):** he pretends to be another monster (e.g., the Statue) and breaks its rule.
+- **Disguise (later, more monsters):** copies of other monsters as they're built (e.g., the Statue), each with its own tell.
 
 ### Role in a full match
 **Chaos and misdirection.** He rarely kills on his own; his danger is the attention he takes away and the places he lures you. With other monsters around, that's exactly when they get you.
 
 ### Open questions
 - How often should he teleport vs. walk vs. stay? *(Currently testing: about 35% teleport, 35% walk off, 15% bait, 15% stay, with at most one purple flash every ~20 s.)*
-- How rare should fake teleports be? *(Current plan: about 1 in 6 flashes.)*
+- How rare should fake teleports be? *(Currently testing: about 1 in 6 of his "slipped away" flashes.)*
 - Keep the rare "angry" random attack?
 - Final look: tall, thin, imp-like? Lots of room for great animations (peeking, backing away, the stare).
+- Copy **any** monster later (even ones not in the match)? For now he only copies monsters that are actually in the game, so a copy is never automatically fake.
 
 ---
 
@@ -121,6 +126,7 @@
 - A **ROAR** right before it charges.
 - **Heavy breathing** while it rests.
 - Dull orange eyes, and it's *big* (taller and much wider than the Trickster).
+- **It is never silent.** If a "Brute" moves without a sound, it's the Trickster in disguise.
 
 ### Role in a full match
 **Pressure and noise.** It pushes players around the map, forces sprints (burning stamina), and drives them into lockers and corners, which is exactly where the Trickster likes them. It's the monster you can always hear; the Trickster is the one you can't.
@@ -130,6 +136,7 @@
 - Is 8 s of chasing / 6 s of resting the right rhythm?
 - Should it break doors or smash lockers later?
 - Should the Trickster be able to use the Brute's noise as cover?
+- **The Trickster can disguise himself as the Brute.** A Brute that makes **no sound** is not the Brute (see the Trickster).
 
 ---
 

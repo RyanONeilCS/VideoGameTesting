@@ -72,6 +72,9 @@ public class MonsterBrain : MonoBehaviour
     public bool IsBeingIgnored => profile.useRing && UnseenFor >= profile.ignoredAfterSeconds;
     /// <summary>Ducked around a corner after being spotted, waiting for whoever follows.</summary>
     public bool IsWaitingAroundCorner => Time.time < cornerWaitUntil;
+    /// <summary>FAKE TELEPORT: it flashed... but it never left. Waiting right there around the corner.</summary>
+    public bool IsFakeTeleporting => IsWaitingAroundCorner && Time.time < fakeTeleportUntil;
+    float fakeTeleportUntil = -1f;
     /// <summary>In the middle of a lunge (wind-up, then the catch check).</summary>
     public bool IsAttacking => attackPhase != AttackPhase.None;
     /// <summary>Lost you: looking around where it last saw you.</summary>
@@ -233,6 +236,8 @@ public class MonsterBrain : MonoBehaviour
         scareAllowedAt = Time.time + profile.scareCooldown;
         hideAllowedAt = Time.time + profile.hideCooldown;
         huntAllowedAt = Time.time + 5f;
+        ownProfile = profile;
+        nextDisguiseAt = Time.time + Random.Range(profile.disguiseEvery.x, profile.disguiseEvery.y);
         Enter(MonsterState.Wander);
     }
 
@@ -257,6 +262,9 @@ public class MonsterBrain : MonoBehaviour
         if (!agent.enabled || !agent.isOnNavMesh) return;
         Sense();
         UpdateRing();
+
+        // THE TRICKSTER'S DISGUISE: maybe turn into another monster; while disguised, watch for its bluff being called.
+        if (UpdateDisguise()) return;
 
         // The RULE gets the final say on movement, every frame, before anything else.
         CanMoveNow = rule.CanMove(this);
@@ -1490,7 +1498,21 @@ public class MonsterBrain : MonoBehaviour
         if (total <= 0f) { WalkAway(); return; }
 
         float r = Random.value * total;
-        if ((r -= teleport) < 0f) { if (!(FlashBudgetReady && VanishSomewhere())) WalkAway(); return; }
+        if ((r -= teleport) < 0f)
+        {
+            if (!FlashBudgetReady) { WalkAway(); return; }
+            // FAKE TELEPORT (sometimes): the flash goes off... but it never left. It waits right there, around the corner.
+            // You trust the flash and walk on: fine. You go check where it "left" from: you followed it, and it gets you.
+            if (mayStay && Random.value < profile.fakeTeleportChance)   // (only behind a REAL wall, like staying)
+            {
+                FlashWhereIWas();
+                cornerWaitUntil = Time.time + profile.fakeTeleportWaitSeconds;
+                fakeTeleportUntil = cornerWaitUntil;
+                return;
+            }
+            if (!VanishSomewhere()) WalkAway();
+            return;
+        }
         if ((r -= walk) < 0f) { WalkAway(); return; }
         if ((r -= bait) < 0f) { if (!(FlashBudgetReady && TryStartBait())) WalkAway(); return; }
         cornerWaitUntil = Time.time + profile.cornerWaitSeconds;   // STAY: waiting around the corner
@@ -1695,6 +1717,7 @@ public class MonsterBrain : MonoBehaviour
         WatchPressure = 0f;
         Enter(MonsterState.Hunt);
         IsFakeHunt = fake;
+        disguiseRealCatch = Random.value < ownProfile.disguiseRealCatchChance;   // (only matters while disguised)
     }
 
     void UpdateHunt()
@@ -1744,7 +1767,13 @@ public class MonsterBrain : MonoBehaviour
         {
             agent.speed = profile.lungeSpeed;
             agent.acceleration = 80f;
-            if (!Target.IsHiding && DistanceToTarget <= profile.catchDistance) { Catch(Target); return; }
+            if (!Target.IsHiding && DistanceToTarget <= profile.catchDistance)
+            {
+                // Disguised: usually just a purple flash in your face, and it's gone. Sometimes it's real.
+                if (disguised && !disguiseRealCatch) { DropDisguise(flash: true, callBluff: false); return; }
+                Catch(Target);
+                return;
+            }
             if (Time.time >= attackPhaseEndsAt)
             {
                 attackPhase = AttackPhase.None;                              // missed!
@@ -1835,6 +1864,7 @@ public class MonsterBrain : MonoBehaviour
 
     void Catch(PlayerAIState victim)
     {
+        if (disguised) EndDisguise();   // (got you for real: back to its own self)
         victim.OnCaught(this);
         Learn(Boldness, +0.2f);   // LEARNING: that worked
         agent.Warp(spawnPosition);
@@ -1986,7 +2016,7 @@ public class MonsterBrain : MonoBehaviour
 
             IsBanging = false;
             BangingOn = null;
-            if (!OpenAfterBangingChance.Roll())
+            if (!disguised && !OpenAfterBangingChance.Roll())   // (disguised: it ALWAYS opens it. The real Brute rarely does.)
             {
                 // Gave up... for now. It lurks nearby and won't search hiding spots again for a while.
                 Learn(OpenAfterBangingChance, +0.1f);   // LEARNING: you WERE in there, so open it next time
@@ -2235,6 +2265,227 @@ public class MonsterBrain : MonoBehaviour
         LeaveSpot();
         Learn(HideAmbushChance, +0.2f);       // LEARNING: best outcome possible
         Catch(player);
+    }
+
+    // =====================================================================
+    // THE DISGUISE (the Trickster copies another monster that's in the match)
+    // =====================================================================
+    // Out of sight, it takes another monster's BODY (size, colours, eyes) and its SETTINGS (a copy of that monster's
+    // profile), so it really acts like it. But it can't hide what it is: every copy has a TELL.
+    //   The Brute's tell: SILENCE. (The real Brute's footsteps, roar and panting come from MonsterFootsteps,
+    //   which the Trickster doesn't have.)
+    // And it breaks the copied monster's rules: as the Brute it ALWAYS opens the locker it saw you get into.
+    // Reaches you: usually a purple flash in your face (sometimes real). Stand your ground: its bluff is called.
+
+    /// <summary>Is it disguised as another monster right now?</summary>
+    public bool IsDisguised => disguised;
+    /// <summary>Which monster it's copying (null = none).</summary>
+    public MonsterBrain DisguisedAs => disguised ? copying : null;
+    /// <summary>Calling its bluff: seconds you've watched it charge without running (fills to Bluff Call Seconds).</summary>
+    public float BluffMeter => bluffFor;
+    /// <summary>Its own settings (while disguised, 'profile' is the copy).</summary>
+    public MonsterProfile OwnProfile => ownProfile != null ? ownProfile : profile;
+
+    MonsterProfile ownProfile;
+    bool disguised, disguiseRealCatch, lookSaved;
+    MonsterBrain copying;
+    float nextDisguiseAt, disguiseEndsAt, bluffFor, exposedUntil = -1f, nextDisguiseCheck;
+    readonly Dictionary<MonsterProfile, MonsterProfile> disguiseProfiles = new Dictionary<MonsterProfile, MonsterProfile>();
+
+    // My own look, saved so I can change back
+    Transform myBody;
+    Renderer myBodyRenderer;
+    readonly List<Renderer> myEyes = new List<Renderer>();
+    Vector3 savedBodyPos, savedBodyScale, savedColCenter;
+    Material savedBodyMat, savedEyeMat;
+    readonly List<Vector3> savedEyePos = new List<Vector3>();
+    float savedColHeight, savedColRadius, savedAgentHeight, savedEyeHeight;
+
+    /// <summary>Returns true if it took over this frame (exposed, or just changed shape).</summary>
+    bool UpdateDisguise()
+    {
+        if (ownProfile == null) return false;
+
+        if (!disguised)
+        {
+            if (!ownProfile.canDisguise || Time.time < nextDisguiseCheck) return false;
+            nextDisguiseCheck = Time.time + 1f;
+            return TryStartDisguise();
+        }
+
+        // Exposed (you called its bluff): it skids to a stop and stares at you for a moment... then it's gone.
+        if (exposedUntil > 0f)
+        {
+            agent.isStopped = true;
+            FaceTarget();
+            if (Time.time >= exposedUntil) DropDisguise(flash: true, callBluff: true);
+            return true;
+        }
+
+        // CALLING ITS BLUFF: it's charging at you, you're watching it, and you're NOT sprinting away.
+        bool charging = State == MonsterState.Hunt;
+        bool standingYourGround = Target.CanSee(this) && Target.moveState != MoveState.Sprint && !Target.IsHiding;
+        if (charging && standingYourGround && DistanceToTarget <= ownProfile.bluffCallDistance)
+            bluffFor += Time.deltaTime;
+        else
+            bluffFor = Mathf.Max(0f, bluffFor - Time.deltaTime);
+        if (bluffFor >= ownProfile.bluffCallSeconds)
+        {
+            exposedUntil = Time.time + 0.6f;
+            agent.isStopped = true;
+            return true;
+        }
+
+        // Time's up (or the monster it copied is gone): change back, out of sight.
+        bool originalGone = copying == null || !copying.isActiveAndEnabled;
+        if ((Time.time >= disguiseEndsAt || originalGone) && State != MonsterState.Hunt && !IsWatched)
+        {
+            DropDisguise(flash: false, callBluff: false);
+            return true;
+        }
+        return false;
+    }
+
+    bool TryStartDisguise()
+    {
+        // Only while quietly stalking, unseen for a few seconds, not in the middle of a trick
+        bool calm = State == MonsterState.Stalk && UnseenFor >= 3f && !peeking && !leaning && !baiting &&
+                    !IsWaitingAroundCorner && Time.time >= graceUntil;
+        if (!calm || Time.time < nextDisguiseAt) return false;
+
+        // Who can I copy? Only monsters actually in this match (for now).
+        var options = new List<MonsterBrain>();
+        foreach (var m in All)
+            if (m != this && m.isActiveAndEnabled && m.profile != null && !m.IsDisguised &&
+                m.OwnProfile.canBeImpersonated && m.transform.Find("Body") != null)
+                options.Add(m);
+        if (options.Count == 0 || transform.Find("Body") == null)
+        {
+            nextDisguiseAt = Time.time + 20f;   // nobody to copy right now
+            return false;
+        }
+
+        // Slip away somewhere around you first (quietly), so the "new monster" doesn't appear where I was.
+        if (!VanishSomewhere(flash: false)) { nextDisguiseAt = Time.time + 10f; return false; }
+
+        copying = options[Random.Range(0, options.Count)];
+        CopyLookOf(copying);
+        profile = DisguiseProfileFor(copying.OwnProfile);
+        disguised = true;
+        disguiseEndsAt = Time.time + ownProfile.disguiseMaxSeconds;
+        bluffFor = 0f;
+        exposedUntil = -1f;
+        huntAllowedAt = Time.time + 2f;
+        Enter(MonsterState.Wander);
+        return true;
+    }
+
+    /// <summary>A copy of the other monster's settings, tweaked so the act finds you (it's really after YOU).</summary>
+    MonsterProfile DisguiseProfileFor(MonsterProfile original)
+    {
+        if (disguiseProfiles.TryGetValue(original, out MonsterProfile copy)) return copy;
+        copy = Instantiate(original);
+        copy.name = original.name + " (Trickster copy)";
+        copy.displayName = $"{ownProfile.displayName} (disguised as {original.displayName})";
+        copy.wanderStyle = WanderStyle.DriftTowardPlayers;
+        copy.driftChance = 1f;            // it's not really roaming: it's coming for you
+        copy.driftFuzziness = 8f;
+        copy.learningEnabled = false;
+        copy.canTeleport = false;         // (teleports happen when it drops the act, with its own settings)
+        copy.canDisguise = false;
+        disguiseProfiles[original] = copy;
+        return copy;
+    }
+
+    /// <summary>Drop the act. Flash = a purple flash where it stood (you'll know it was me). Called bluff = ring pushed back.</summary>
+    void DropDisguise(bool flash, bool callBluff)
+    {
+        EndDisguise();
+        if (flash) FlashWhereIWas();
+        if (callBluff && Target != null)
+        {
+            OnSpottedRing();
+            rings[Target] = Mathf.Clamp(Ring + ownProfile.bluffRingPushBack, profile.ringAttackRadius, RingMax);
+        }
+        graceUntil = Time.time + profile.graceAfterHunt;
+        huntAllowedAt = Time.time + 10f;
+        VanishSomewhere(flash: false);
+        Enter(MonsterState.Stalk);
+    }
+
+    /// <summary>Back to its own body and settings (no teleport, no state change).</summary>
+    void EndDisguise()
+    {
+        if (!disguised) return;
+        disguised = false;
+        copying = null;
+        exposedUntil = -1f;
+        bluffFor = 0f;
+        restUntil = -1f;
+        profile = ownProfile;
+        RestoreLook();
+        nextDisguiseAt = Time.time + Random.Range(ownProfile.disguiseEvery.x, ownProfile.disguiseEvery.y);
+    }
+
+    void SaveLook()
+    {
+        if (lookSaved) return;
+        myBody = transform.Find("Body");
+        myBodyRenderer = myBody.GetComponent<Renderer>();
+        savedBodyPos = myBody.localPosition;
+        savedBodyScale = myBody.localScale;
+        savedBodyMat = myBodyRenderer.sharedMaterial;
+        myEyes.Clear();
+        savedEyePos.Clear();
+        foreach (Transform child in transform)
+            if (child.name == "Eye") { myEyes.Add(child.GetComponent<Renderer>()); savedEyePos.Add(child.localPosition); }
+        if (myEyes.Count > 0) savedEyeMat = myEyes[0].sharedMaterial;
+        var col = GetComponent<CapsuleCollider>();
+        if (col != null) { savedColHeight = col.height; savedColRadius = col.radius; savedColCenter = col.center; }
+        savedAgentHeight = agent.height;
+        savedEyeHeight = eyeHeight;
+        lookSaved = true;
+    }
+
+    void CopyLookOf(MonsterBrain other)
+    {
+        SaveLook();
+        Transform theirBody = other.transform.Find("Body");
+        myBody.localPosition = theirBody.localPosition;
+        myBody.localScale = theirBody.localScale;
+        myBodyRenderer.sharedMaterial = theirBody.GetComponent<Renderer>().sharedMaterial;
+
+        var theirEyes = new List<Transform>();
+        foreach (Transform child in other.transform) if (child.name == "Eye") theirEyes.Add(child);
+        for (int i = 0; i < myEyes.Count && i < theirEyes.Count; i++)
+        {
+            myEyes[i].transform.localPosition = theirEyes[i].localPosition;
+            myEyes[i].sharedMaterial = theirEyes[i].GetComponent<Renderer>().sharedMaterial;
+        }
+
+        var col = GetComponent<CapsuleCollider>();
+        var theirCol = other.GetComponent<CapsuleCollider>();
+        if (col != null && theirCol != null) { col.height = theirCol.height; col.radius = theirCol.radius; col.center = theirCol.center; }
+        var theirAgent = other.GetComponent<NavMeshAgent>();
+        if (theirAgent != null) agent.height = theirAgent.height;
+        eyeHeight = other.eyeHeight;
+    }
+
+    void RestoreLook()
+    {
+        if (!lookSaved) return;
+        myBody.localPosition = savedBodyPos;
+        myBody.localScale = savedBodyScale;
+        myBodyRenderer.sharedMaterial = savedBodyMat;
+        for (int i = 0; i < myEyes.Count; i++)
+        {
+            myEyes[i].transform.localPosition = savedEyePos[i];
+            myEyes[i].sharedMaterial = savedEyeMat;
+        }
+        var col = GetComponent<CapsuleCollider>();
+        if (col != null) { col.height = savedColHeight; col.radius = savedColRadius; col.center = savedColCenter; }
+        agent.height = savedAgentHeight;
+        eyeHeight = savedEyeHeight;
     }
 
     // =====================================================================

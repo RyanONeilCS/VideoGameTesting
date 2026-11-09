@@ -149,6 +149,7 @@ public class PlayerHUD : MonoBehaviour
                           : m.IsPeeking ? " (peeking at you from a corner)"
                           : m.IsLeaningOut ? " (leaning out, watching you)"
                           : m.IsBaiting ? " (BAITING you from down the hall... don't get too close)"
+                          : m.IsFakeTeleporting ? " (FAKE TELEPORT: it never left... still around the corner. Don't go check)"
                           : m.IsWaitingAroundCorner ? " (waiting around the corner... don't follow)"
                           : m.IsLockerPeeking ? " (PEEKING OUT OF A LOCKER: door open, eyes on you)"
                           : m.IsHiddenInSpot ? (gem ? " (inside a locker BY A GEM!)" : " (inside a hiding spot!)")
@@ -157,6 +158,9 @@ public class PlayerHUD : MonoBehaviour
                           : gem ? " (heading to guard a gem)" : "";
             sb.AppendLine();
             sb.AppendLine($"{m.profile.displayName}:  {m.State}{detail}   distance {m.DistanceToTarget:0.0} m");
+            if (m.IsDisguised)
+                sb.AppendLine($"   << DISGUISED as {m.DisguisedAs.OwnProfile.displayName}   TELL: {m.DisguisedAs.OwnProfile.disguiseTell} >>" +
+                              $"   call its bluff (watch it charge, don't sprint): {m.BluffMeter:0.0} / {m.OwnProfile.bluffCallSeconds:0.0}");
             string hidden = m.IsWatched ? "NO (you can see part of it)" : $"YES (unseen {m.UnseenFor:0.0} s)";
             sb.AppendLine($"   HIDDEN FROM YOU: {hidden}    it sees you: {YesNo(m.CanSeeTarget)}    can move: {YesNo(m.CanMoveNow)}");
             if (m.profile.useRing && m.Target == ai)

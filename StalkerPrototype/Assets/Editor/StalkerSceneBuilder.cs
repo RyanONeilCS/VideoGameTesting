@@ -42,7 +42,7 @@ public static class StalkerSceneBuilder
     static readonly bool UseCreepModel = false;
 
     const int SceneVersion = 10;   // bump when the generator changes -> offers a rebuild
-    const int ProfileVersion = 16;  // bump when default monster settings change -> refreshes profiles
+    const int ProfileVersion = 17;  // bump when default monster settings change -> refreshes profiles
 
     static string VersionKey => "Stalker.SceneVersion." + Application.dataPath;
 
@@ -116,6 +116,7 @@ public static class StalkerSceneBuilder
         p.followStyle = FollowStyle.StalkFromBehind;
         p.spottedReactions = new SpottedReactionWeights { stareThenHide = 0.9f, freeze = 0f, flee = 0.08f, vanish = 0f, chase = 0.02f };   // no Freeze: stand-and-stare covers it
         p.canHide = true;
+        p.canDisguise = true;          // copies other monsters in the match (with a tell)
     }
 
     // THE BRUTE: big, loud, slow, dumb. Sees you -> roars -> charges -> runs out of steam -> rests.
@@ -182,6 +183,8 @@ public static class StalkerSceneBuilder
         p.loseInterestDistance = 40f;
         p.investigateSeconds = 4f;
         p.learningEnabled = false;      // the Brute doesn't learn
+        p.canBeImpersonated = true;     // the Trickster can copy it. TELL: the copy is SILENT
+        p.disguiseTell = "SILENT: no footsteps, no roar, no panting";
     }
 
     static void SetupStatue(MonsterProfile p)

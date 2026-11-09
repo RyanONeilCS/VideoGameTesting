@@ -153,6 +153,11 @@ public class MonsterProfile : ScriptableObject
     public float teleportFlashSeconds = 0.4f;
     [Tooltip("After a teleport it holds still this long (seconds), facing you, before moving again.")]
     public float settleAfterTeleportSeconds = 1f;
+    [Tooltip("FAKE TELEPORT: the chance a purple flash (after slipping away) is a lie. The flash goes off, but it never left: " +
+             "it waits right there around the corner. Go check where it \"left\" from, and it gets you (you followed it).")]
+    [Range(0f, 1f)] public float fakeTeleportChance = 0.17f;
+    [Tooltip("After a fake teleport: how long it waits around the corner for you (seconds).")]
+    public float fakeTeleportWaitSeconds = 10f;
     [Tooltip("SNEAKY: it won't walk across a player's view. If the next bit of its route is visible, it waits...")]
     public bool sneakyMovement = true;
     [Tooltip("...for up to this long (seconds), then teleports instead (so it's still always around).")]
@@ -311,6 +316,27 @@ public class MonsterProfile : ScriptableObject
     public float catchDistance = 1.3f;
     [Tooltip("After a missed lunge it's slow for this long (seconds): your chance to get away.")]
     public float attackRecoverSeconds = 0.8f;
+
+    [Header("DISGUISE (the Trickster copies another monster in the match)")]
+    [Tooltip("On: now and then, out of sight, it turns into a copy of another monster in the match (same body, same behaviour)... " +
+             "with a TELL. Copying the Brute: it's completely SILENT (the real one is always loud).")]
+    public bool canDisguise = false;
+    [Tooltip("Seconds between disguises (random in this range). The first one comes no earlier than the minimum, either.")]
+    public Vector2 disguiseEvery = new Vector2(90f, 150f);
+    [Tooltip("Longest it stays disguised (seconds). Then it changes back out of sight.")]
+    public float disguiseMaxSeconds = 60f;
+    [Tooltip("Disguised and it reaches you: the chance it's a REAL catch. Otherwise a purple flash in your face, and it's gone.")]
+    [Range(0f, 1f)] public float disguiseRealCatchChance = 0.25f;
+    [Tooltip("CALL ITS BLUFF: watch it charge at you WITHOUT sprinting away for this long, and it's exposed (flash, gone, ring pushed back).")]
+    public float bluffCallSeconds = 1.5f;
+    [Tooltip("...and only counts while it's this close (metres).")]
+    public float bluffCallDistance = 14f;
+    [Tooltip("Called its bluff: the ring is pushed back this much extra (your reward).")]
+    public float bluffRingPushBack = 6f;
+    [Tooltip("Can the Trickster copy THIS monster? (Each copyable monster needs a tell: the Brute's is silence.)")]
+    public bool canBeImpersonated = false;
+    [Tooltip("What gives the copy away (shown in the debug panel; design note). The Brute: \"silent: no footsteps, no roar\".")]
+    public string disguiseTell = "";
 
     [Header("TIRES OUT (the Brute: charges, then has to catch its breath)")]
     [Tooltip("On: when a chase runs out (Hunt Duration above), it stops dead and rests instead of going back to stalking.")]

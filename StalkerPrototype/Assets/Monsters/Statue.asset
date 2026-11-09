@@ -69,6 +69,7 @@ MonoBehaviour:
   exploredSpotPenalty: 12
   behindPlayerPenalty: 8
   ambushDistance: 3
+  burstOutRealAttackChance: 0.25
   checkHidingSpotsChance:
     start: 0.3
     min: 0.1
@@ -120,6 +121,10 @@ MonoBehaviour:
   leanOutHoldSeconds: {x: 2, y: 4}
   peekMaxVisiblePoints: 3
   peekMaxSeconds: 10
+  peekFromLockers: 1
+  lockerPeekChance: 0.35
+  lockerPeekDelay: {x: 1.5, y: 3}
+  stayInLockerAfterSpotted: {x: 8, y: 15}
   huntSpeed: 9
   huntWindupSeconds: 0.6
   huntDuration: 10
@@ -133,6 +138,17 @@ MonoBehaviour:
   lungeSeconds: 0.35
   catchDistance: 1.3
   attackRecoverSeconds: 0.8
+  canDisguise: 0
+  disguiseEvery: {x: 90, y: 150}
+  disguiseMaxSeconds: 60
+  disguiseRealCatchChance: 0.25
+  bluffCallSeconds: 1.5
+  bluffCallDistance: 14
+  bluffRingPushBack: 6
+  canBeImpersonated: 0
+  disguiseTell: 
+  tiresOut: 0
+  restSeconds: 6
   spottedReactions:
     stareThenHide: 0
     freeze: 1
@@ -182,4 +198,4 @@ MonoBehaviour:
   loseInterestDistance: 45
   learningEnabled: 1
   adaptability: 0.3
-  builderVersion: 16
+  builderVersion: 17
