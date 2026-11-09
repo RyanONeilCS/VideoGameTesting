@@ -1,0 +1,185 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a35983bb71ef22a4bb7ce3c01a4e575f, type: 3}
+  m_Name: Stalker
+  m_EditorClassIdentifier: Assembly-CSharp::MonsterProfile
+  displayName: The Stalker
+  wanderStyle: 0
+  wanderSpeed: 2.2
+  wanderRadius: 15
+  wanderPause: {x: 1, y: 3}
+  driftChance: 0.7
+  driftFuzziness: 15
+  followStyle: 0
+  stalkSpeed: 3.2
+  minStalkDistance: 4
+  maxStalkDistance: 12
+  boldness:
+    start: 0.5
+    min: 0.2
+    max: 0.9
+    locked: 0
+  useRing: 1
+  ringStartRadius: 24
+  ringAttackRadius: 4
+  ringShrinkPerSecond: 0.35
+  ringPushBackWhenSpotted: 3
+  ringMaxDropPerSpot: 1.5
+  ringMaxLowest: 10
+  ignoredAfterSeconds: 25
+  ignoredShrinkMultiplier: 2
+  ringAfterHunt: 20
+  catchUpSpeed: 4.5
+  canTeleport: 1
+  teleportIfWalkFartherThan: 25
+  quietTeleportOnlyFartherThan: 20
+  teleportCooldown: 6
+  minSecondsBetweenFlashes: 20
+  teleportFlash: 1
+  teleportFlashColor: {r: 0.6, g: 0.15, b: 1, a: 1}
+  teleportFlashRange: 11
+  teleportFlashIntensity: 10
+  teleportFlashSeconds: 0.4
+  settleAfterTeleportSeconds: 1
+  sneakyMovement: 1
+  waitForClearPathSeconds: 2
+  alwaysTracksPlayers: 1
+  trackingUpdateInterval: 2
+  trackingFuzz: 5
+  investigateSeconds: 4
+  breatherAfterLosingYou: 12
+  canHide: 1
+  hideAmbushChance:
+    start: 0.08
+    min: 0.03
+    max: 0.2
+    locked: 0
+  hideMaxSeconds: 15
+  hideCooldown: 40
+  leaveHidingIfPlayersFartherThan: 28
+  exploredSpotPenalty: 12
+  behindPlayerPenalty: 8
+  ambushDistance: 3
+  checkHidingSpotsChance:
+    start: 0.3
+    min: 0.15
+    max: 0.7
+    locked: 0
+  searchRadius: 12
+  maxSpotsToCheck: 2
+  searchGuessRandomness: 8
+  hidingHabitWeight: 3
+  bangOnDoorWhenSawHide: 1
+  bangSeconds: {x: 2.5, y: 4.5}
+  openAfterBangingChance:
+    start: 0.6
+    min: 0.3
+    max: 0.9
+    locked: 0
+  searchCooldownAfterGivingUp: 20
+  guardGems: 1
+  guardGemChance:
+    start: 0.1
+    min: 0.05
+    max: 0.25
+    locked: 0
+  guardOnlyGemsWithin: 30
+  lockerByGemBonus: 6
+  guardFromLockerChance: 0.5
+  guardRadius: 10
+  guardSeconds: {x: 15, y: 30}
+  gemPickupHearingRange: 25
+  fakeHuntChance:
+    start: 0.06
+    min: 0.02
+    max: 0.15
+    locked: 0
+  scareCheckInterval: 6
+  scareCooldown: 40
+  fakeHuntDuration: {x: 2, y: 4}
+  realHuntChance: 0.01
+  boldnessHuntBonus: 0
+  boldnessHideReduction: 0.4
+  canBait: 1
+  baitDistance: {x: 18, y: 30}
+  baitAttackDistance: 10
+  baitMaxSeconds: 12
+  peekWhenUnseen: 1
+  peekAfterUnseen: 12
+  leanOutToWatch: 1
+  leanOutEvery: {x: 3, y: 7}
+  leanOutHoldSeconds: {x: 2, y: 4}
+  peekMaxVisiblePoints: 3
+  peekMaxSeconds: 10
+  huntSpeed: 5.2
+  huntWindupSeconds: 0.6
+  huntDuration: 12
+  huntCooldown: 20
+  huntLoseSightSeconds: 2.5
+  huntTriggerDistance: 6
+  minStalkSecondsBeforeHunt: 10
+  attackRange: 3.5
+  attackWindupSeconds: 0.35
+  lungeSpeed: 10
+  lungeSeconds: 0.35
+  catchDistance: 1.3
+  attackRecoverSeconds: 0.8
+  spottedReactions:
+    stareThenHide: 0.9
+    freeze: 0
+    flee: 0.08
+    vanish: 0
+    chase: 0.02
+  secondsWatchedBeforeSpotted: 0.6
+  stareSeconds: {x: 1, y: 2}
+  retreatSpeed: 2.5
+  dashIfCoverFartherThan: 8
+  teleportIfCoverFartherThan: 5
+  maxRetreatSeconds: 3
+  escapeKeepAwayFromPlayers: 3
+  escapeSpeed: 9
+  escapeAcceleration: 60
+  maxCoverPathLength: 25
+  lurkAfterHidingSeconds: {x: 2, y: 5}
+  teleportAwayWeight: 0.35
+  walkAwayWeight: 0.35
+  baitWeight: 0.15
+  stayWeight: 0.15
+  cornerAmbushDistance: 4
+  cornerWaitSeconds: 8
+  standAndStareWhenCaughtInOpen: 1
+  openNoCornerWithin: 3
+  standAndStareAttackDistance: 6
+  standAndStareVanishAfterUnseen: 0.25
+  extraStayChance: 0.3
+  attackWhenWatchedTooLong: 1
+  graceAfterHunt: 5
+  watchedTooLongSeconds: 6
+  followPressureMultiplier: 2
+  pressureDecayPerSecond: 1
+  freezeBreakDistance: 5
+  freezeBreakApproach: 3
+  freezeBreakAttackChance:
+    start: 0.4
+    min: 0.2
+    max: 0.7
+    locked: 0
+  maxFreezeSeconds: {x: 12, y: 20}
+  unseenSecondsToCountAsHidden: 0.6
+  sightRange: 25
+  sightAngle: 140
+  hearingRange: 18
+  memorySeconds: 8
+  loseInterestDistance: 45
+  learningEnabled: 1
+  adaptability: 0.6
+  builderVersion: 16

@@ -1,0 +1,16 @@
+# Unity generates these folders; never commit them
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+*.csproj
+*.sln
+*.slnx
+.vs/
+.vscode/
+
+# Playtest data from TelemetryLogger (keep locally, don't commit)
+/Telemetry/
