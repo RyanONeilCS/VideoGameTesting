@@ -3,7 +3,8 @@
 Ready-to-play Windows builds of the Stalker prototype. No Unity needed.
 
 ## How to play
-1. Download the build's whole folder (use the newest: `BuildV2`). The game needs every file in it, not just the `.exe`.
+1. **Easiest:** click `BuildV2.zip` in this folder, then the **Download** button (↓, top right of the file view). Unzip it (right-click → Extract All).
+   The game needs every file in the folder, not just the `.exe`.
 2. Run `StalkerPrototype.exe`. If Windows warns "unknown app", click **More info → Run anyway**. If it asks about the firewall, click **Allow**.
 3. In the menu:
    - **Solo:** play alone.
