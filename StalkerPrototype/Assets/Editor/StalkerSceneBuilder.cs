@@ -2,6 +2,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Unity.AI.Navigation;
+using Unity.Netcode;
+using Unity.Netcode.Components;
+using Unity.Netcode.Transports.UTP;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEditor.SceneManagement;
@@ -41,7 +44,7 @@ public static class StalkerSceneBuilder
     // Set to true and rebuild to try it again; MonsterAnimator only uses idle / walk / attack.
     static readonly bool UseCreepModel = false;
 
-    const int SceneVersion = 10;   // bump when the generator changes -> offers a rebuild
+    const int SceneVersion = 11;   // bump when the generator changes -> offers a rebuild
     const int ProfileVersion = 17;  // bump when default monster settings change -> refreshes profiles
 
     static string VersionKey => "Stalker.SceneVersion." + Application.dataPath;
@@ -51,9 +54,15 @@ public static class StalkerSceneBuilder
         EditorApplication.delayCall += BuildOnOpen;
     }
 
+    /// <summary>
+    /// Multiplayer Play Mode's extra players (Player 2, 3...) are COPIES of this editor, running from
+    /// Library/VP/... They share our files, so they must never rebuild the map (only the main editor does).
+    /// </summary>
+    static bool IsPlayModeClone => Application.dataPath.Replace('\\', '/').Contains("/Library/VP/");
+
     static void BuildOnOpen()
     {
-        if (Application.isBatchMode || EditorApplication.isPlayingOrWillChangePlaymode) return;
+        if (Application.isBatchMode || EditorApplication.isPlayingOrWillChangePlaymode || IsPlayModeClone) return;
         if (!File.Exists(ScenePath)) { Build(DefaultSeed); return; }
 
         // Update monster profiles if the default settings changed (keeps your tweaks otherwise)
@@ -69,8 +78,8 @@ public static class StalkerSceneBuilder
         {
             EditorPrefs.SetInt(VersionKey, SceneVersion);   // only ask once
             if (EditorUtility.DisplayDialog("Stalker: the test map was updated",
-                    "NEW MONSTER: the Brute (big, loud, charges when it sees you, then tires out).\n" +
-                    "Also: darker lighting and film grain.\n\n" +
+                    "MULTIPLAYER: a start menu (Solo / Host / Join). The player and the monsters are now prefabs " +
+                    "in Assets/Prefabs, placed by spawn points in the scene.\n\n" +
                     "Rebuild the test scene now?",
                     "Rebuild", "Later (use the Stalker menu)"))
                 Build(DefaultSeed);
@@ -87,6 +96,11 @@ public static class StalkerSceneBuilder
 
     static void ConfirmAndBuild(int seed)
     {
+        if (IsPlayModeClone)
+        {
+            Debug.LogWarning("Stalker: rebuild the map from the MAIN editor window, not from a Multiplayer Play Mode player.");
+            return;
+        }
         // Scenes can't be rebuilt while the game is running: stop Play mode first, then rebuild.
         if (EditorApplication.isPlaying)
         {
@@ -335,24 +349,38 @@ public static class StalkerSceneBuilder
             lamp.color = new Color(1f, 0.82f, 0.6f);
         }
 
-        // ---------- Player (first room) and monsters (the rooms furthest away) ----------
-        MakePlayer(RoomCenter(rooms[0]), playerMat);
+        // ---------- MULTIPLAYER: the player and the monsters are PREFABS (Assets/Prefabs) ----------
+        // The host spawns them when a match starts: one player per person, monsters at their spawn points.
+        EnsureFolder("Assets", "Prefabs");
+        new GameObject("Player Spawn (players start here)").AddComponent<PlayerSpawnPoint>().transform.position = RoomCenter(rooms[0]);
+        GameObject playerPrefab = SaveAsNetworkPrefab(MakePlayer(Vector3.zero, playerMat), "Player");
 
+        // Monsters start in the rooms furthest away
         var byDistance = new List<RectInt>(rooms);
         byDistance.Sort((a, b) => Vector3.Distance(RoomCenter(b), RoomCenter(rooms[0]))
                                   .CompareTo(Vector3.Distance(RoomCenter(a), RoomCenter(rooms[0]))));
         var creepController = UseCreepModel ? CreepAnimatorController() : null;   // null = red pill
-        MakeMonster("Monster - The Stalker", RoomCenter(byDistance[0]), stalkerProfile, stalkerMat, eyeMat, typeof(MonsterRule),
-                    StalkerModel, creepController);
-        var statue = MakeMonster("Monster - The Statue", RoomCenter(byDistance[Mathf.Min(1, byDistance.Count - 1)]), statueProfile, statueMat, eyeMat, typeof(StatueRule),
+        var stalker = MakeMonster("Monster - The Stalker", Vector3.zero, stalkerProfile, stalkerMat, eyeMat, typeof(MonsterRule),
+                                  StalkerModel, creepController);
+        MonsterSpawn(stalker, RoomCenter(byDistance[0]), spawnAtStart: true);
+
+        var statue = MakeMonster("Monster - The Statue", Vector3.zero, statueProfile, statueMat, eyeMat, typeof(StatueRule),
                                  StatueModel, creepController);
-        statue.SetActive(false);   // switched OFF to start: tick its checkbox in the Inspector to try it
+        MonsterSpawn(statue, RoomCenter(byDistance[Mathf.Min(1, byDistance.Count - 1)]), spawnAtStart: false);   // OFF: tick its spawn point to try it
 
         // THE BRUTE: taller and much wider than the Trickster, dull orange eyes, LOUD.
-        // (Untick its checkbox in the Inspector to test the Trickster on its own, or untick the Stalker to test the Brute alone.)
-        var brute = MakeMonster("Monster - The Brute", RoomCenter(byDistance[Mathf.Min(2, byDistance.Count - 1)]), bruteProfile, bruteMat, bruteEyeMat,
+        // (Untick a monster's spawn point in the Inspector to leave it out of the match.)
+        var brute = MakeMonster("Monster - The Brute", Vector3.zero, bruteProfile, bruteMat, bruteEyeMat,
                                 typeof(MonsterRule), StalkerModel, null, height: BruteHeight, width: BruteWidth);
         brute.AddComponent<MonsterFootsteps>();
+        MonsterSpawn(brute, RoomCenter(byDistance[Mathf.Min(2, byDistance.Count - 1)]), spawnAtStart: true);
+
+        // The shared match state (lockers, gems, score) and the network + start menu
+        var netGame = new GameObject("Net Game");
+        netGame.AddComponent<NetworkObject>();
+        netGame.AddComponent<NetGame>();
+        GameObject netGamePrefab = SaveAsNetworkPrefab(netGame, "Net Game");
+        MakeNetwork(playerPrefab, netGamePrefab, MakeMenuCamera(RoomCenter(rooms[0])));
 
         // ---------- Telemetry ----------
         new GameObject("Telemetry").AddComponent<TelemetryLogger>();
@@ -556,7 +584,11 @@ public static class StalkerSceneBuilder
     // =====================================================================
     // PLAYER & MONSTERS
     // =====================================================================
-    static void MakePlayer(Vector3 position, Material mat)
+    /// <summary>
+    /// The player prefab. The camera, ears, controls and HUD start switched OFF: PlayerNet switches them on only for
+    /// YOUR player. Everyone else's player is just a body with a flashlight.
+    /// </summary>
+    static GameObject MakePlayer(Vector3 position, Material mat)
     {
         var player = new GameObject("Player") { tag = "Player" };
         player.transform.position = position;
@@ -569,7 +601,7 @@ public static class StalkerSceneBuilder
         var body = Primitive(PrimitiveType.Capsule, "Body", player.transform, mat);
         body.transform.localPosition = new Vector3(0f, 0.9f, 0f);
         body.transform.localScale = new Vector3(0.7f, 0.9f, 0.7f);
-        body.GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.ShadowsOnly;   // don't block our own view
+        // (Visible to others; PlayerNet makes YOUR body shadow-only so it doesn't block your view)
 
         var camGO = new GameObject("PlayerCamera") { tag = "MainCamera" };
         camGO.transform.SetParent(player.transform, false);
@@ -579,9 +611,11 @@ public static class StalkerSceneBuilder
         cam.nearClipPlane = 0.05f;
         cam.clearFlags = CameraClearFlags.SolidColor;
         cam.backgroundColor = RenderSettings.fogColor;
-        camGO.AddComponent<AudioListener>();
+        cam.enabled = false;
+        camGO.AddComponent<AudioListener>().enabled = false;
         var grain = camGO.AddComponent<FilmGrain>();   // grainy film look (G toggles it in play mode)
         grain.shader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/Shaders/FilmGrain.shader");
+        grain.enabled = false;
 
         var flashlight = new GameObject("Flashlight").AddComponent<Light>();
         flashlight.transform.SetParent(camGO.transform, false);
@@ -593,9 +627,103 @@ public static class StalkerSceneBuilder
 
         var ai = player.AddComponent<PlayerAIState>();
         ai.playerCamera = cam;
-        player.AddComponent<FirstPersonController>();
-        player.AddComponent<PlayerHiding>();
-        player.AddComponent<PlayerHUD>();
+        player.AddComponent<FirstPersonController>().enabled = false;
+        player.AddComponent<PlayerHiding>().enabled = false;
+        player.AddComponent<PlayerHUD>().enabled = false;
+
+        // Networking: YOU move your player (Owner), everyone else sees it move. Only turning left/right is sent
+        // (looking up/down is sent by PlayerNet, for the camera).
+        player.AddComponent<NetworkObject>();
+        var nt = player.AddComponent<NetworkTransform>();
+        nt.AuthorityMode = NetworkTransform.AuthorityModes.Owner;
+        SyncYawOnly(nt);
+        player.AddComponent<PlayerNet>();
+        return player;
+    }
+
+    static void SyncYawOnly(NetworkTransform nt)
+    {
+        nt.SyncRotAngleX = false;
+        nt.SyncRotAngleZ = false;
+        nt.SyncScaleX = nt.SyncScaleY = nt.SyncScaleZ = false;
+    }
+
+    // =====================================================================
+    // MULTIPLAYER SETUP
+    // =====================================================================
+    /// <summary>Make a monster networked, save it as a prefab, and put a spawn point for it in the scene.</summary>
+    static void MonsterSpawn(GameObject monster, Vector3 position, bool spawnAtStart)
+    {
+        monster.AddComponent<NetworkObject>();
+        var nt = monster.AddComponent<NetworkTransform>();
+        nt.AuthorityMode = NetworkTransform.AuthorityModes.Server;   // the host's monster moves; everyone sees it
+        SyncYawOnly(nt);
+        monster.AddComponent<MonsterNet>();
+        string name = monster.name;
+        GameObject prefab = SaveAsNetworkPrefab(monster, name);
+
+        var point = new GameObject($"Spawn: {name.Replace("Monster - ", "")}").AddComponent<MonsterSpawnPoint>();
+        point.transform.SetPositionAndRotation(position, Quaternion.Euler(0f, 180f, 0f));
+        point.prefab = prefab;
+        point.gameObject.SetActive(spawnAtStart);
+    }
+
+    /// <summary>Saves the object as a prefab in Assets/Prefabs and removes it from the scene.</summary>
+    static GameObject SaveAsNetworkPrefab(GameObject instance, string fileName)
+    {
+        string path = $"Assets/Prefabs/{fileName}.prefab";
+        instance.transform.position = Vector3.zero;
+        GameObject prefab = PrefabUtility.SaveAsPrefabAsset(instance, path);
+        Object.DestroyImmediate(instance);
+
+        // Every computer must agree on which prefab is which: give it a fixed ID made from the file's GUID
+        var so = new SerializedObject(prefab.GetComponent<NetworkObject>());
+        var idHash = so.FindProperty("GlobalObjectIdHash");
+        if (idHash != null)
+        {
+            idHash.uintValue = StableHash(AssetDatabase.AssetPathToGUID(path));
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(prefab);
+        }
+        return prefab;
+    }
+
+    static uint StableHash(string s)   // FNV-1a: the same number on every computer, every time
+    {
+        uint h = 2166136261;
+        foreach (char c in s) { h ^= c; h *= 16777619; }
+        return h;
+    }
+
+    /// <summary>The NetworkManager (the connection) + the start menu (NetSession).</summary>
+    static void MakeNetwork(GameObject playerPrefab, GameObject netGamePrefab, GameObject menuCamera)
+    {
+        var go = new GameObject("Network (start menu + connection)");
+        var manager = go.AddComponent<NetworkManager>();
+        var transport = go.AddComponent<UnityTransport>();
+        manager.NetworkConfig = new NetworkConfig
+        {
+            NetworkTransport = transport,
+            PlayerPrefab = playerPrefab,        // one of these is spawned for everyone who joins
+            EnableSceneManagement = false,      // everyone already has the same map loaded
+            ConnectionApproval = false,
+        };
+        var session = go.AddComponent<NetSession>();
+        session.netGamePrefab = netGamePrefab;
+        session.menuCamera = menuCamera;
+    }
+
+    /// <summary>What you see behind the start menu: looking down into the start room.</summary>
+    static GameObject MakeMenuCamera(Vector3 startRoom)
+    {
+        var go = new GameObject("Menu Camera") { tag = "MainCamera" };
+        go.transform.position = startRoom + new Vector3(0f, WallHeight + 6f, -10f);
+        go.transform.LookAt(startRoom);
+        var cam = go.AddComponent<Camera>();
+        cam.clearFlags = CameraClearFlags.SolidColor;
+        cam.backgroundColor = RenderSettings.fogColor;
+        go.AddComponent<AudioListener>();
+        return go;
     }
 
     static GameObject MakeMonster(string name, Vector3 position, MonsterProfile profile, Material bodyMat, Material eyeMat, System.Type ruleType,

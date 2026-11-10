@@ -17,8 +17,10 @@ public enum MonsterState { Wander, Stalk, Spotted, Hunt, Search, Hide }
 ///   STALK --rule says hunt--> HUNT          STALK --dice roll--> FAKE HUNT or HIDE (ambush from a locker)
 ///   lost you --> SEARCH (checks hiding spots near where it lost you) --> WANDER
 /// </summary>
+/// MULTIPLAYER: the brain only THINKS on the host. Everyone else gets a "remote copy" that just shows what the
+/// host's monster is doing (see MonsterBrain.Remote.cs and MonsterNet.cs).
 [RequireComponent(typeof(NavMeshAgent))]
-public class MonsterBrain : MonoBehaviour
+public partial class MonsterBrain : MonoBehaviour
 {
     /// <summary>Every monster currently in the game (used by the HUD and the logger).</summary>
     public static readonly List<MonsterBrain> All = new List<MonsterBrain>();
@@ -86,7 +88,7 @@ public class MonsterBrain : MonoBehaviour
     /// <summary>The Brute: worn out after a chase, standing there catching its breath.</summary>
     public bool IsResting => Time.time < restUntil;
     /// <summary>Is it moving right now (and how fast)? Read by MonsterFootsteps.</summary>
-    public float CurrentSpeed => agent != null && agent.enabled ? agent.velocity.magnitude : 0f;
+    public float CurrentSpeed => IsRemoteCopy ? remoteSpeed : agent != null && agent.enabled ? agent.velocity.magnitude : 0f;
 
     // ---------- Learned values (copies of the profile's chances, so the file isn't changed) ----------
     public BehaviourChance Boldness { get; private set; }
@@ -227,6 +229,8 @@ public class MonsterBrain : MonoBehaviour
 
     void Start()
     {
+        if (IsRemoteCopy) return;   // multiplayer: only the host's copy thinks and walks
+
         // The NavMesh is built when the game starts, so the agent is turned on here, after that.
         if (NavMesh.SamplePosition(transform.position, out NavMeshHit hit, 5f, NavMesh.AllAreas))
             transform.position = hit.position;
@@ -246,6 +250,8 @@ public class MonsterBrain : MonoBehaviour
     // =====================================================================
     void Update()
     {
+        if (IsRemoteCopy) return;   // multiplayer: MonsterNet copies the host's monster onto this one
+
         // You won: everything stops.
         if (GameObjective.Instance != null && GameObjective.Instance.Won)
         {
@@ -2129,9 +2135,9 @@ public class MonsterBrain : MonoBehaviour
         IsWatched = false;
     }
 
-    // ---------- PEEK FROM A LOCKER: the door creaks open... and it's watching you ----------
+    // ---------- PEEK FROM A LOCKER: the door eases open (silently)... and it's watching you ----------
     // A locker in front of you, door facing you, that you could see from where you are. It slips in unseen
-    // (no flash: it's already inside before you notice anything), waits a moment, then the door creaks open.
+    // (no flash: it's already inside before you notice anything), waits a moment, then the door eases open.
     bool TryStartLockerPeek()
     {
         if (!profile.peekFromLockers || !profile.canTeleport || HidingSpot.All.Count == 0 || !IsFullyHidden) return false;
@@ -2201,7 +2207,7 @@ public class MonsterBrain : MonoBehaviour
             return;
         }
 
-        // THE TELLS: the door sits a crack open with one eye in the gap. Peeking: it creaks wider, both eyes.
+        // THE TELLS: the door sits a crack open with one eye in the gap. Peeking: it opens wider (no sound), both eyes.
         if (lockerPeek && !lockerPeekDone && Time.time >= lockerPeekOpenAt)
         {
             hideSpot.ShowPeek(eyeMaterial);
@@ -2594,8 +2600,10 @@ public class MonsterBrain : MonoBehaviour
     {
         lastFlashTime = Time.time;   // (counts toward the flash budget even if the flash is switched off)
         if (!profile.teleportFlash) return;
-        LightFlash.Spawn(transform.position + Vector3.up * 1.5f, profile.teleportFlashColor,
+        Vector3 at = transform.position + Vector3.up * 1.5f;
+        LightFlash.Spawn(at, profile.teleportFlashColor,
                          profile.teleportFlashRange, profile.teleportFlashIntensity, profile.teleportFlashSeconds);
+        Flashed?.Invoke(at);   // multiplayer: everyone else sees the flash too
     }
 
     static bool RandomNavPoint(Vector3 center, float radius, out Vector3 result)

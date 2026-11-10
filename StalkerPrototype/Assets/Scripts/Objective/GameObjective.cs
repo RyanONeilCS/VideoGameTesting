@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 /// <summary>
 /// The win condition (a placeholder until the real objective / armory): collect the gems.
@@ -22,9 +21,9 @@ public class GameObjective : MonoBehaviour
     public bool Won { get; private set; }
     public float LastCollectTime { get; private set; } = -999f;
     /// <summary>Seconds since the match started (stops counting once you win).</summary>
-    public float MatchTime => (Won ? wonAt : Time.time) - startTime;
+    public float MatchTime => remoteWinTime > 0f ? remoteWinTime : (Won ? wonAt : Time.time) - startTime;
 
-    float startTime, wonAt;
+    float startTime, wonAt, remoteWinTime;
 
     void Awake() => Instance = this;
     void OnDestroy() { if (Instance == this) Instance = null; }
@@ -52,10 +51,24 @@ public class GameObjective : MonoBehaviour
         }
     }
 
+    /// <summary>Multiplayer (everyone but the host): copy the host's score.</summary>
+    public void ApplyRemote(int collected, bool won, float winTime)
+    {
+        if (collected > Collected) LastCollectTime = Time.time;   // "+1 GEM" on everyone's screen
+        Collected = collected;
+        Won = won;
+        remoteWinTime = won ? winTime : 0f;
+    }
+
     void Update()
     {
-        // After winning, R reloads the scene for a fresh match.
+        // The host starts the match timer when the match actually starts (not while sitting in the menu)
+        if (!matchStarted && PlayerAIState.All.Count > 0) { matchStarted = true; startTime = Time.time; }
+
+        // After winning, R ends the match: back to the menu (everyone, if you're the host) for a fresh one.
         if (Won && InputHelper.RestartPressed())
-            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+            NetSession.LeaveMatch();
     }
+
+    bool matchStarted;
 }

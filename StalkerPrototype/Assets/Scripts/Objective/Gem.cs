@@ -29,6 +29,7 @@ public class Gem : MonoBehaviour
         transform.position = Position + Vector3.up * (Mathf.Sin(Time.time * 2f) * bobHeight);
 
         if (GameObjective.Instance != null && GameObjective.Instance.Won) return;
+        if (!NetRole.IsServer) return;   // multiplayer: only the host decides who picked it up
 
         // Any player (not hiding) close enough picks it up. Distance check on the ground plane = no physics setup needed.
         foreach (var p in PlayerAIState.All)

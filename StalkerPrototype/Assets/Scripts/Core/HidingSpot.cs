@@ -5,8 +5,8 @@ using UnityEngine;
 /// A locker / closet that holds ONE occupant: a player OR a monster (design doc 6.2).
 /// Put this on the locker's root object. Its blue arrow (forward) should point OUT, toward the room.
 ///
-/// TELLS (when a monster is inside): the door sits a crack open with one glowing eye in the gap, and creaks now
-/// and then. When it PEEKS out of the locker, the door creaks wider and both eyes watch you. When it bursts out,
+/// TELLS (when a monster is inside): SILENT, you have to SEE them. The door sits a crack open with one glowing eye in
+/// the gap. When it PEEKS out of the locker, the door eases wider and both eyes watch you. When it bursts out,
 /// the door slams open with a screech.
 /// </summary>
 public class HidingSpot : MonoBehaviour
@@ -38,11 +38,11 @@ public class HidingSpot : MonoBehaviour
 
     enum Tell { None, Ajar, Peek, Burst }
     Tell tell;
-    float angle, targetAngle, closeBurstAt, nextCreak;
+    float angle, targetAngle, closeBurstAt;
     Transform hinge;
     GameObject eyeOuter, eyeInner;
     AudioSource source;
-    static AudioClip creak, screech;
+    static AudioClip screech;   // (no sounds while a monster hides: the only sound is bursting OUT)
 
     void OnEnable() => All.Add(this);
     void OnDisable() => All.Remove(this);
@@ -64,7 +64,7 @@ public class HidingSpot : MonoBehaviour
         source.minDistance = 2f;
         source.maxDistance = 22f;
         source.playOnAwake = false;
-        if (creak == null) MakeClips();
+        if (screech == null) MakeClips();
     }
 
     public bool TryEnter(GameObject who)
@@ -83,9 +83,9 @@ public class HidingSpot : MonoBehaviour
     }
 
     // ---------- Tells (called by the monster inside) ----------
-    /// <summary>Hiding inside: door a crack open, one eye in the gap, a creak now and then.</summary>
+    /// <summary>Hiding inside: door a crack open, one eye in the gap. Silent.</summary>
     public void ShowAjar(Material eyeMat) => SetTell(Tell.Ajar, eyeMat);
-    /// <summary>Peeking out at you: the door creaks wider, both eyes watching.</summary>
+    /// <summary>Peeking out at you: the door eases wider, both eyes watching. Silent.</summary>
     public void ShowPeek(Material eyeMat) => SetTell(Tell.Peek, eyeMat);
     /// <summary>Bursting out: the door slams open with a screech, then swings shut.</summary>
     public void BurstOpen()
@@ -96,40 +96,39 @@ public class HidingSpot : MonoBehaviour
         source.PlayOneShot(screech, 1f);
     }
 
+    // ---------- Multiplayer: the host decides, everyone else copies ----------
+    /// <summary>The tell showing right now, as a number (0 none, 1 ajar, 2 peek, 3 burst). NetGame sends this.</summary>
+    public byte TellCode => (byte)tell;
+
+    /// <summary>Everyone but the host: make this locker match the host's (who's inside, and the door/eyes).</summary>
+    public void ApplyRemote(GameObject occupant, byte tellCode)
+    {
+        Occupant = occupant;
+        var next = (Tell)tellCode;
+        if (next == tell) return;
+        if (next == Tell.Burst) { BurstOpen(); return; }
+        Material eyes = occupant != null && occupant.TryGetComponent(out MonsterBrain m) ? m.EyeMaterial : null;
+        SetTell(next, eyes);
+    }
+
     void SetTell(Tell next, Material eyeMat)
     {
         if (tell == next) return;
-        bool opening = (next == Tell.Peek && tell != Tell.Peek) || (next == Tell.Ajar && tell == Tell.None);
         tell = next;
         targetAngle = next == Tell.Ajar ? ajarAngle : next == Tell.Peek ? peekAngle : next == Tell.Burst ? 100f : 0f;
         if (eyeMat != null) EnsureEyes(eyeMat);
         if (eyeOuter != null) eyeOuter.SetActive(next == Tell.Ajar || next == Tell.Peek);
         if (eyeInner != null) eyeInner.SetActive(next == Tell.Peek);
-        if (opening) Creak(next == Tell.Peek ? 0.9f : 0.5f);
-        nextCreak = Time.time + Random.Range(6f, 12f);
     }
 
     void Update()
     {
         if (tell == Tell.Burst && Time.time >= closeBurstAt) SetTell(Tell.None, null);
 
-        // Swing the door: slow and creaky opening, a little faster closing, a SLAM when bursting out
+        // Swing the door: slow opening, a little faster closing, a SLAM when bursting out
         float speed = tell == Tell.Burst ? 700f : targetAngle > angle ? 22f : 35f;
         angle = Mathf.MoveTowards(angle, targetAngle, speed * Time.deltaTime);
         if (hinge != null) hinge.localRotation = Quaternion.Euler(0f, -angle, 0f);   // negative = swings outward
-
-        // Something is in there... the door creaks now and then
-        if (tell == Tell.Ajar && Time.time >= nextCreak)
-        {
-            nextCreak = Time.time + Random.Range(6f, 12f);
-            Creak(0.35f);
-        }
-    }
-
-    void Creak(float loudness)
-    {
-        source.pitch = Random.Range(0.85f, 1.15f);
-        source.PlayOneShot(creak, loudness);
     }
 
     void EnsureEyes(Material mat)
@@ -157,16 +156,6 @@ public class HidingSpot : MonoBehaviour
     {
         const int rate = 44100;
         var rng = new System.Random(11);
-
-        // CREAK: a slow, scratchy, wobbling squeak (stick-slip: lots of tiny clicks)
-        creak = Clip("Locker Creak", 0.9f, rate, t =>
-        {
-            float env = Mathf.Clamp01(t / 0.1f) * Mathf.Clamp01((0.9f - t) / 0.3f);
-            float freq = 180f + 60f * Mathf.Sin(t * 7f) + 40f * t;
-            float pulse = Mathf.Repeat(freq * t, 1f) < 0.12f ? 1f : -0.15f;   // a train of clicks = a creak
-            float grit = ((float)rng.NextDouble() * 2f - 1f) * 0.25f;
-            return (pulse * 0.6f + grit) * env * 0.7f;
-        });
 
         // SCREECH: a harsh, high, falling shriek
         screech = Clip("Trickster Screech", 0.7f, rate, t =>

@@ -20,6 +20,13 @@ public class TelemetryLogger : MonoBehaviour
 
     void OnEnable()
     {
+        MonsterBrain.StateChanged += OnStateChanged;
+        GameObjective.GemCollected += OnGemCollected;
+    }
+
+    /// <summary>Opens the files once the match has started, and only on the HOST (that's where the monsters think).</summary>
+    void OpenFiles()
+    {
         string folder = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Telemetry"));
         Directory.CreateDirectory(folder);
         string stamp = System.DateTime.Now.ToString("yyyyMMdd_HHmmss");
@@ -30,9 +37,6 @@ public class TelemetryLogger : MonoBehaviour
 
         events = new StreamWriter(Path.Combine(folder, $"events_{stamp}.csv"));
         events.WriteLine("time,monster,from_state,to_state,distance");
-
-        MonsterBrain.StateChanged += OnStateChanged;
-        GameObjective.GemCollected += OnGemCollected;
         Debug.Log($"Telemetry: logging to {folder}");
     }
 
@@ -61,6 +65,7 @@ public class TelemetryLogger : MonoBehaviour
 
     void Update()
     {
+        if (snapshots == null && NetRole.IsServer && MonsterBrain.All.Count > 0 && PlayerAIState.All.Count > 0) OpenFiles();
         if (snapshots == null || Time.time < nextSnapshot) return;
         nextSnapshot = Time.time + interval;
 

@@ -3,6 +3,9 @@ using UnityEngine;
 /// <summary>
 /// Look at a hiding spot (locker) and press E to get in. Press E again to get out.
 /// If a MONSTER is already inside... bad luck.
+///
+/// Multiplayer: pressing E ASKS THE HOST (PlayerNet), because the host knows who's in which locker. When the host
+/// says yes, EnterSpotLocally moves you in. (On your own you're the host, so the answer is instant.)
 /// </summary>
 [RequireComponent(typeof(PlayerAIState), typeof(CharacterController), typeof(FirstPersonController))]
 public class PlayerHiding : MonoBehaviour
@@ -16,13 +19,18 @@ public class PlayerHiding : MonoBehaviour
     PlayerAIState ai;
     CharacterController controller;
     FirstPersonController movement;
+    PlayerNet net;
+    HidingSpot inside;   // the locker I'm physically in, on this computer
 
     void Awake()
     {
         ai = GetComponent<PlayerAIState>();
         controller = GetComponent<CharacterController>();
         movement = GetComponent<FirstPersonController>();
+        net = GetComponent<PlayerNet>();
     }
+
+    bool Networked => net != null && net.IsSpawned;
 
     void Update()
     {
@@ -37,35 +45,55 @@ public class PlayerHiding : MonoBehaviour
 
         if (!InputHelper.InteractPressed()) return;
 
-        if (ai.IsHiding) { ExitSpot(); return; }
-        if (LookedAtSpot == null) return;
-
-        MonsterBrain monsterInside = LookedAtSpot.OccupyingMonster;
-        if (monsterInside != null)
+        if (Networked)
         {
-            monsterInside.AmbushedBy(ai);   // surprise!
+            if (ai.IsHiding) net.RequestExit();
+            else if (LookedAtSpot != null) net.RequestInteract(LookedAtSpot);
             return;
         }
-        EnterSpot(LookedAtSpot);
+
+        // ----- Not networked: decide right here -----
+        if (ai.IsHiding) { ExitSpot(); return; }
+        if (LookedAtSpot == null) return;
+        MonsterBrain monsterInside = LookedAtSpot.OccupyingMonster;
+        if (monsterInside != null) { monsterInside.AmbushedBy(ai); return; }   // surprise!
+        if (!LookedAtSpot.TryEnter(gameObject)) return;
+        ai.currentHidingSpot = LookedAtSpot;
+        EnterSpotLocally(LookedAtSpot);
     }
 
-    void EnterSpot(HidingSpot spot)
+    /// <summary>Climb in (the host already said yes): locked in place, looking out through the door.</summary>
+    public void EnterSpotLocally(HidingSpot spot)
     {
-        if (!spot.TryEnter(gameObject)) return;
+        inside = spot;
         ai.currentHidingSpot = spot;
-        controller.enabled = false;       // must be off to teleport, and so we don't collide with the locker
+        controller.enabled = false;       // so we don't collide with the locker
         movement.movementLocked = true;   // can still look around, can't walk
-        transform.SetPositionAndRotation(spot.InsidePosition, Quaternion.LookRotation(spot.transform.forward));
+        Place(spot.InsidePosition, Quaternion.LookRotation(spot.transform.forward));
     }
 
+    /// <summary>Climb out. moveOut = step out in front of the door (false = something else moves you, e.g. caught).</summary>
+    public void LeaveSpotLocally(bool moveOut)
+    {
+        if (inside == null) return;   // not in one
+        HidingSpot spot = inside;
+        inside = null;
+        ai.currentHidingSpot = null;
+        movement.movementLocked = false;
+        if (moveOut) Place(spot.ExitPosition, transform.rotation);
+        controller.enabled = true;
+    }
+
+    /// <summary>Not networked: get out and free the locker.</summary>
     public void ExitSpot()
     {
-        HidingSpot spot = ai.currentHidingSpot;
-        if (spot == null) return;
-        spot.Exit(gameObject);
-        ai.currentHidingSpot = null;
-        transform.position = spot.ExitPosition;
-        controller.enabled = true;
-        movement.movementLocked = false;
+        if (ai.currentHidingSpot != null) ai.currentHidingSpot.Exit(gameObject);
+        LeaveSpotLocally(moveOut: true);
+    }
+
+    void Place(Vector3 position, Quaternion rotation)
+    {
+        if (Networked) net.MoveTo(position, rotation);
+        else transform.SetPositionAndRotation(position, rotation);
     }
 }

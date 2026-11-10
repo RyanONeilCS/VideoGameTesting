@@ -32,6 +32,9 @@ public static class InputHelper
     public static bool InteractPressed() => K != null && K.eKey.wasPressedThisFrame;
     public static bool RestartPressed() => K != null && K.rKey.wasPressedThisFrame;
     public static bool GrainTogglePressed() => K != null && K.gKey.wasPressedThisFrame;
+    public static bool MuteTogglePressed() => K != null && K.vKey.wasPressedThisFrame;
+    /// <summary>Mouse position in GUI coordinates (0,0 = top-left, like OnGUI).</summary>
+    public static Vector2 MouseGuiPosition() { if (M == null) return Vector2.zero; Vector2 p = M.position.ReadValue(); return new Vector2(p.x, Screen.height - p.y); }
 #else
     // ----- Old Input Manager -----
     public static Vector2 Move() => new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
@@ -45,5 +48,7 @@ public static class InputHelper
     public static bool InteractPressed() => Input.GetKeyDown(KeyCode.E);
     public static bool RestartPressed() => Input.GetKeyDown(KeyCode.R);
     public static bool GrainTogglePressed() => Input.GetKeyDown(KeyCode.G);
+    public static bool MuteTogglePressed() => Input.GetKeyDown(KeyCode.V);
+    public static Vector2 MouseGuiPosition() => new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
 #endif
 }

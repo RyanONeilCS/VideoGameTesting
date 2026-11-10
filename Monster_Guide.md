@@ -16,7 +16,7 @@
 ### What he generally does
 - **Circles you at a distance,** always just out of sight, slowly closing in (the "ring").
 - **Peeks** around corners ahead of you, and **leans out** from behind corners to watch you. Only part of him shows: a head, a shoulder, his eyes.
-- **Peeks out of lockers,** too: a locker door ahead of you **creaks open**, and his **eyes watch you through the gap**. Spot him and the door eases shut... but now you *know* he's in there. A locker he's hiding in sits **a crack open, one eye glinting**, creaking now and then.
+- **Peeks out of lockers,** too: a locker door ahead of you **slowly opens**, and his **eyes watch you through the gap**. Spot him and the door eases shut... but now you *know* he's in there. A locker he's hiding in sits **a crack open, one eye glinting**. Hiding, he makes **no sound at all**: you have to *see* it.
 - When you spot him, he **holds your gaze, then backs away** behind the corner, always facing you, never turning his back. (If there's no cover close by, he just **teleports away on the spot**, even while you're watching.) Then he either:
   - **teleports away** (a **purple flash** around the corner)... or **pretends to**: about 1 flash in 6 is fake, and he's still right there around the corner,
   - **walks off** out of sight (no flash: is he still nearby?),
@@ -61,7 +61,7 @@
 ### Tells (how you know he's around)
 - The **purple flash** (usually means he teleported... usually. About 1 in 6 is fake: he never left).
 - Glowing eyes in a dark corner; a head poking around a corner.
-- A locker door that **creaks**, or sits **open a crack** with an eye in the gap.
+- A locker door that sits **open a crack** with an eye in the gap, or slowly **swings open** with two eyes watching (silent: you have to see it).
 - A monster that's **acting wrong**: a **silent Brute** is him in disguise.
 - *(Planned)* footsteps that stop when you turn around.
 

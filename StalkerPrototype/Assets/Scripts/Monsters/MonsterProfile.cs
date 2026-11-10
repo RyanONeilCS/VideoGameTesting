@@ -281,12 +281,12 @@ public class MonsterProfile : ScriptableObject
     [Tooltip("Gives up peeking after this long (seconds) if nobody notices.")]
     public float peekMaxSeconds = 10f;
     [Tooltip("PEEK FROM LOCKERS: sometimes it peeks out of a locker instead of from a corner. It slips in unseen, " +
-             "the door creaks open, and its eyes watch you through the gap. Spot it and the door eases shut: you KNOW " +
+             "the door silently eases open, and its eyes watch you through the gap. Spot it and the door eases shut: you KNOW " +
              "it's in there. Walk past: it bursts out. Open it: you followed it.")]
     public bool peekFromLockers = true;
     [Tooltip("When it's time to peek, the chance it uses a locker (if there's one in front of you) instead of a corner.")]
     [Range(0f, 1f)] public float lockerPeekChance = 0.35f;
-    [Tooltip("After slipping into the locker, it waits this long (seconds) before the door creaks open.")]
+    [Tooltip("After slipping into the locker, it waits this long (seconds) before the door opens.")]
     public Vector2 lockerPeekDelay = new Vector2(1.5f, 3f);
     [Tooltip("Spotted in a locker: it stays in there (door ajar, one eye) this long before slipping away.")]
     public Vector2 stayInLockerAfterSpotted = new Vector2(8f, 15f);

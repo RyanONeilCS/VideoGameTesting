@@ -90,7 +90,7 @@ public class PlayerHUD : MonoBehaviour
                 GUI.Label(new Rect(0f, h * 0.38f, w, 60f), "YOU WIN!", big);
                 int secs = Mathf.FloorToInt(goal.MatchTime);
                 GUI.Label(new Rect(0f, h * 0.38f + 60f, w, 30f),
-                    $"All gems collected in {secs / 60}:{secs % 60:00}   •   caught {ai.timesCaught}x   •   [R] play again", prompt);
+                    $"All gems collected in {secs / 60}:{secs % 60:00}   •   caught {ai.timesCaught}x   •   [R] back to the menu", prompt);
             }
         }
 

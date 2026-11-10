@@ -30,6 +30,15 @@ public class PlayerAIState : MonoBehaviour
 
     Vector3 spawnPosition;
     Quaternion spawnRotation;
+    public Vector3 SpawnPosition => spawnPosition;
+    public Quaternion SpawnRotation => spawnRotation;
+
+    /// <summary>Where you go back to when caught.</summary>
+    public void SetSpawn(Vector3 position, Quaternion rotation)
+    {
+        spawnPosition = position;
+        spawnRotation = rotation;
+    }
 
     public Vector3 EyePosition => playerCamera.transform.position;
     public Vector3 LookDirection => playerCamera.transform.forward;
@@ -171,9 +180,13 @@ public class PlayerAIState : MonoBehaviour
     {
         timesCaught++;
         lastCaughtTime = Time.time;
-        Debug.Log($"Caught by {by.name}! (total: {timesCaught})");
+        Debug.Log($"{name} caught by {by.name}! (total: {timesCaught})");
 
-        // Get out of any hiding spot first
+        // Multiplayer: the monster runs on the host, so the host tells this player's computer "you got caught"
+        var net = GetComponent<PlayerNet>();
+        if (net != null && net.IsSpawned) { net.ServerCaught(); return; }
+
+        // (Not networked: do it right here.) Get out of any hiding spot first
         var hiding = GetComponent<PlayerHiding>();
         if (hiding != null) hiding.ExitSpot();
 

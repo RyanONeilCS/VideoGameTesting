@@ -62,7 +62,7 @@ public class FirstPersonController : MonoBehaviour
     {
         // --- Mouse lock: Esc frees the mouse, clicking captures it again ---
         if (InputHelper.EscapePressed()) SetCursorLocked(false);
-        if (InputHelper.ClickPressed()) SetCursorLocked(true);
+        if (InputHelper.ClickPressed() && !NetSession.IsPointerOverButtons()) SetCursorLocked(true);   // (not when clicking Leave / Copy code)
 
         // --- Looking around ---
         if (Cursor.lockState == CursorLockMode.Locked)
