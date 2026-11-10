@@ -149,7 +149,12 @@ public class NetSession : MonoBehaviour
     void OnlineFailed(string what, Exception e)
     {
         Debug.LogWarning($"{what}: {e}");
-        Failed($"{what}: {e.Message}\n(Is the project linked to Unity Cloud? Edit > Project Settings > Services)");
+        if (e.ToString().Contains("UnityProjectNotLinked"))
+            Failed($"{what}: this game isn't linked to Unity Cloud yet, so join codes can't work.\n" +
+                   "Fix (in the Unity editor): Edit > Project Settings > Services > link a project, then build again.\n" +
+                   "Until then, use LOCAL NETWORK below.");
+        else
+            Failed($"{what}: {e.Message}\n(See the log for details. Are Relay, Lobby and Vivox switched on at cloud.unity.com?)");
         session = null;
         if (net.IsListening) net.Shutdown();
     }
